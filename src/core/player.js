@@ -83,6 +83,17 @@ export class Player {
         }
     }
 
+    // [수정] 아이템 획득 메서드 추가 (필수)
+    addItem(id, count = 1) {
+        const existingItem = this.inventory.find(i => i.id === id);
+        if (existingItem) {
+            existingItem.count += count;
+        } else {
+            this.inventory.push({ id: id, count: count });
+        }
+        this.updateUI();
+    }
+
     // 아이템 사용/장착 분기
     useItem(itemId) {
         const idx = this.inventory.findIndex(i => i.id === itemId);
