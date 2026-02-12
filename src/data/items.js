@@ -216,3 +216,4 @@ const ITEM_DB = [
   {id:199, type:4, name:"어둠의 계약서", val:2500, desc:"힘/지능 +20, 체력 감소.", stat:{str:20, int:20, max_hp:-100}, dur:0, target:0},
   {id:200, type:4, name:"절대자의 반지", val:50000, desc:"올스탯 +50.", stat:{str:50, dex:50, int:50, luk:50}, dur:0, target:0}
 ];
+export { ITEM_DB };
