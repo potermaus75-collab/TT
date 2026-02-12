@@ -125,6 +125,4 @@ const MONSTER_DB = [
 ];
 
 
-
-// 데이터 내보내기 (모듈 방식 사용 시)
-// export { MONSTER_DB, ITEM_DB };
+export { MONSTER_DB };
