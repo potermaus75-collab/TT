@@ -3,25 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Text RPG: The Vibe</title>
+    <title>Text RPG: The Complete</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="game-container">
-        
         <header id="status-bar">
             <div class="status-row">
                 <span id="player-name">플레이어</span>
-                <span id="player-lv">LV.1</span>
+                <span id="player-lv">LV.1 (0%)</span>
             </div>
             <div class="bar-container">
-                <div class="bar hp-bar"><div id="hp-fill" style="width: 100%;"></div><span id="hp-text">100/100</span></div>
-                <div class="bar mp-bar"><div id="mp-fill" style="width: 100%;"></div><span id="mp-text">50/50</span></div>
+                <div class="bar hp-bar"><div id="hp-fill" style="width: 100%;"></div><span id="hp-text">HP 100/100</span></div>
+                <div class="bar mp-bar"><div id="mp-fill" style="width: 100%;"></div><span id="mp-text">MP 50/50</span></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar hunger-bar"><div id="hunger-fill" style="width: 100%;"></div><span id="hunger-text">포만감 100</span></div>
+                <div class="bar fatigue-bar"><div id="fatigue-fill" style="width: 0%;"></div><span id="fatigue-text">피로도 0</span></div>
             </div>
             <div class="status-info">
                 <span id="location-text">📍 어둠의 숲 입구</span>
-                <span id="time-text">☀️ 낮</span>
             </div>
         </header>
 
@@ -30,12 +32,81 @@
         </main>
 
         <footer id="action-bar">
-            <button class="btn" data-action="explore">탐험하기</button>
-            <button class="btn" data-action="inventory">가방</button>
-            <button class="btn" data-action="status">상태</button>
-            <button class="btn" data-action="rest">휴식</button>
+            <button class="btn" data-action="explore">🔍 탐험하기</button>
+            <button class="btn" data-action="inventory">🎒 가방</button>
+            <button class="btn" data-action="status">📊 상태</button>
+            <button class="btn" data-action="rest">⛺ 휴식</button>
         </footer>
+    </div>
 
+    <div id="modal-status" class="modal hidden">
+        <div class="modal-content">
+            <h2>내 정보</h2>
+            <div class="status-detail">
+                <p>⚔️ 총 전투 횟수: <span id="stat-fight-count">0</span>회</p>
+                <p>📈 경험치: <span id="stat-exp">0 / 100</span></p>
+                <hr>
+                <h3>🛡️ 장비</h3>
+                <div id="stat-equip-list">
+                    <p>무기: 없음</p>
+                    <p>방어구: 없음</p>
+                    <p>장신구: 없음</p>
+                </div>
+                <hr>
+                <h3>✨ 버프 / 디버프</h3>
+                <div id="stat-buff-list">
+                    <p class="empty-msg">적용 중인 효과가 없습니다.</p>
+                </div>
+            </div>
+            <button class="btn-close" onclick="game.ui.closeModals()">닫기</button>
+        </div>
+    </div>
+
+    <div id="modal-inventory" class="modal hidden">
+        <div class="modal-content">
+            <h2>가방</h2>
+            <div id="inventory-list" class="inventory-grid">
+                </div>
+            <p class="guide-text">* 턴당 1회 사용 가능</p>
+            <button class="btn-close" onclick="game.ui.closeModals()">닫기</button>
+        </div>
+    </div>
+
+    <div id="modal-combat" class="modal hidden">
+        <div class="modal-content combat-layout">
+            <div class="combat-header">
+                <div class="combat-entity enemy">
+                    <div class="entity-avatar" id="enemy-avatar">👹</div>
+                    <div class="entity-info">
+                        <span id="enemy-name">몬스터</span>
+                        <div class="mini-bar"><div id="enemy-hp-bar" style="width:100%"></div></div>
+                        <span id="enemy-hp-text">HP ??</span>
+                    </div>
+                </div>
+                <div class="vs-badge">VS</div>
+                <div class="combat-entity player">
+                    <div class="entity-avatar">👤</div>
+                    <div class="entity-info">
+                        <span id="combat-player-name">나</span>
+                        <div class="mini-bar"><div id="combat-player-hp-bar" style="width:100%"></div></div>
+                        <span id="combat-player-hp-text">HP 100</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dice-area">
+                <div id="dice-visual">🎲</div>
+                <p id="dice-message">주사위를 굴려 공격하세요!</p>
+            </div>
+
+            <div class="combat-actions">
+                <button id="btn-roll-dice" class="btn-combat">🎲 주사위 굴리기</button>
+                <button id="btn-combat-run" class="btn-combat secondary">🏃 도망가기</button>
+            </div>
+            
+            <div id="combat-log-mini">
+                </div>
+        </div>
     </div>
 
     <script type="module" src="./src/main.js"></script>
