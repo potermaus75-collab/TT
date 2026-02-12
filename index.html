@@ -3,59 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Text RPG: The Complete</title>
+    <title>Text RPG: Remastered</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="game-container">
         <header id="status-bar">
-            <div class="status-row">
-                <span id="player-name">플레이어</span>
-                <span id="player-lv">LV.1 (0%)</span>
-            </div>
-            <div class="bar-container">
-                <div class="bar hp-bar">
-                    <div id="hp-fill" style="width: 100%;"></div>
-                    <span id="hp-text">HP 100/100</span>
+            <div class="top-row">
+                <div class="player-info">
+                    <span id="player-name">모험가</span>
+                    <span id="player-lv">LV.1</span>
                 </div>
-                <div class="bar mp-bar">
-                    <div id="mp-fill" style="width: 100%;"></div>
-                    <span id="mp-text">MP 50/50</span>
+                <div class="gold-info">
+                    💰 <span id="player-gold">0</span> G
                 </div>
             </div>
-            <div class="bar-container">
-                <div class="bar hunger-bar">
-                    <div id="hunger-fill" style="width: 100%;"></div>
-                    <span id="hunger-text">포만감 100</span>
+            
+            <div class="bar-group">
+                <div class="bar-label-row">
+                    <span class="label">❤️ HP</span>
+                    <span id="hp-text" class="value-text">100/100</span>
                 </div>
-                <div class="bar fatigue-bar">
-                    <div id="fatigue-fill" style="width: 0%;"></div>
-                    <span id="fatigue-text">피로도 0</span>
-                </div>
+                <div class="bar-track"><div id="hp-fill" class="bar-fill hp"></div></div>
             </div>
-            <div class="status-info">
-                <span id="location-text">📍 어둠의 숲 입구</span>
+
+            <div class="bar-group">
+                <div class="bar-label-row">
+                    <span class="label">💧 MP</span>
+                    <span id="mp-text" class="value-text">50/50</span>
+                </div>
+                <div class="bar-track"><div id="mp-fill" class="bar-fill mp"></div></div>
+            </div>
+
+            <div class="half-row">
+                <div class="bar-group half">
+                    <div class="bar-label-row">
+                        <span class="label">🍖 포만감</span>
+                        <span id="hunger-text" class="value-text">100</span>
+                    </div>
+                    <div class="bar-track"><div id="hunger-fill" class="bar-fill hunger"></div></div>
+                </div>
+                <div class="bar-group half">
+                    <div class="bar-label-row">
+                        <span class="label">💤 피로도</span>
+                        <span id="fatigue-text" class="value-text">0</span>
+                    </div>
+                    <div class="bar-track"><div id="fatigue-fill" class="bar-fill fatigue"></div></div>
+                </div>
             </div>
         </header>
 
         <main id="log-container">
-            <div class="log-entry system">시스템 로딩 완료...</div>
+            <div class="log-entry system">시스템 로딩 완료... 모험을 떠날 준비가 되었습니다.</div>
         </main>
 
         <footer id="action-bar">
             <button class="btn" data-action="explore">🔍 탐험</button>
             <button class="btn" data-action="inventory">🎒 가방</button>
             <button class="btn" data-action="status">📊 정보</button>
-            <button class="btn" data-action="rest">⛺ 휴식</button>
+            <button class="btn" data-action="encyclopedia">📖 도감</button>
         </footer>
     </div>
 
     <div id="modal-status" class="modal hidden">
         <div class="modal-content">
-            <h2>📊 상세 정보</h2>
-            <div id="stat-detail-area">
-                </div>
+            <h2>📊 플레이어 정보</h2>
+            <div id="stat-detail-area"></div>
+            <p id="sp-display" class="highlight-text">남은 포인트(SP): 0</p>
             <button class="btn-close" onclick="game.ui.closeModals()">닫기</button>
         </div>
     </div>
@@ -64,7 +79,27 @@
         <div class="modal-content">
             <h2>🎒 가방</h2>
             <div id="inventory-list" class="inventory-grid"></div>
-            <p class="guide-text">* 아이템을 눌러 사용/장착하세요.</p>
+            <button class="btn-close" onclick="game.ui.closeModals()">닫기</button>
+        </div>
+    </div>
+
+    <div id="modal-shop" class="modal hidden">
+        <div class="modal-content">
+            <h2>🏪 떠돌이 상인</h2>
+            <p>필요한 물건이 있나? (클릭하여 구매)</p>
+            <div id="shop-list" class="inventory-grid"></div>
+            <button class="btn-close" onclick="game.ui.closeModals()">떠나기</button>
+        </div>
+    </div>
+
+    <div id="modal-encyclopedia" class="modal hidden">
+        <div class="modal-content">
+            <h2>📖 모험 도감</h2>
+            <div class="tab-container">
+                <button class="tab-btn active" onclick="game.switchDex('monster')">👹 몬스터</button>
+                <button class="tab-btn" onclick="game.switchDex('item')">⚔️ 아이템</button>
+            </div>
+            <div id="dex-list" class="dex-list"></div>
             <button class="btn-close" onclick="game.ui.closeModals()">닫기</button>
         </div>
     </div>
@@ -90,17 +125,14 @@
                     </div>
                 </div>
             </div>
-
             <div id="dice-area">
                 <div id="dice-visual">🎲</div>
                 <p id="dice-message">전투 시작! 주사위를 굴리세요.</p>
             </div>
-
             <div class="combat-actions">
                 <button id="btn-roll-dice" class="btn-combat">🎲 운명 굴리기</button>
                 <button id="btn-combat-run" class="btn-combat secondary">🏃 도망치기</button>
             </div>
-            
             <div id="combat-log-mini"></div>
         </div>
     </div>
