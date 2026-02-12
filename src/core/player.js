@@ -10,9 +10,11 @@ export class Player {
         this.exp = 0;
         this.nextExp = 100;
         this.fightCount = 0; 
+        this.gold = 50; // 초기 자금
 
-        // 순수 기본 스탯 (장비 미포함)
+        // 순수 기본 스탯 (포인트 투자 가능)
         this.baseStats = { str: 10, dex: 10, int: 10, luk: 10 };
+        this.statPoints = 0; // 투자 가능한 스탯 포인트
 
         // 생존 수치
         this.maxHp = 100; this.hp = 100;
@@ -23,7 +25,6 @@ export class Player {
         // 인벤토리 & 장비
         this.inventory = []; 
         this.equipment = { weapon: null, armor: null, acc: null };
-        this.buffs = []; 
 
         // 초기 아이템 지급
         this.addItem(1, 2); // 약초
@@ -33,9 +34,9 @@ export class Player {
         this.updateUI();
     }
 
-    // 전투용 최종 스탯 계산 (기본 + 장비)
+    // 전투용 최종 스탯 계산
     getCombatStats() {
-        let s = { ...this.baseStats }; // 복사해서 시작
+        let s = { ...this.baseStats }; 
         let atk = 0;
         let def = 0;
 
@@ -52,30 +53,38 @@ export class Player {
             }
         });
 
-        // 기본 보정 (힘1 = 공격 1.5, 민첩1 = 방어 0.5)
+        // 기본 보정
         atk += Math.floor(s.str * 1.5);
         def += Math.floor(s.dex * 0.5);
 
         return { ...s, atk, def, maxHp: this.maxHp, maxMp: this.maxMp };
     }
 
-    // UI 갱신
     updateUI() {
-        const setBar = (id, cur, max, label) => {
+        const setBar = (id, cur, max) => {
             const elFill = document.getElementById(`${id}-fill`);
             const elText = document.getElementById(`${id}-text`);
             if(elFill && elText) {
                 const pct = Math.max(0, Math.min(100, (cur / max) * 100));
                 elFill.style.width = `${pct}%`;
-                elText.innerText = `${label} ${Math.floor(cur)}/${max}`;
+                // 텍스트를 정확한 수치로 표시
+                elText.innerText = `${Math.floor(cur)}/${max}`;
             }
         };
 
-        setBar('hp', this.hp, this.maxHp, "HP");
-        setBar('mp', this.mp, this.maxMp, "MP");
-        setBar('hunger', this.hunger, 100, "포만감");
-        setBar('fatigue', this.fatigue, 100, "피로도");
+        setBar('hp', this.hp, this.maxHp);
+        setBar('mp', this.mp, this.maxMp);
+        
+        // 포만감, 피로도는 100 기준
+        document.getElementById('hunger-text').innerText = `${Math.floor(this.hunger)}`;
+        document.getElementById('hunger-fill').style.width = `${this.hunger}%`;
+        
+        document.getElementById('fatigue-text').innerText = `${Math.floor(this.fatigue)}`;
+        document.getElementById('fatigue-fill').style.width = `${this.fatigue}%`;
 
+        // 골드 및 레벨 표시
+        document.getElementById('player-gold').innerText = this.gold.toLocaleString();
+        
         const elLv = document.getElementById('player-lv');
         if(elLv) {
             const expPct = Math.floor((this.exp / this.nextExp) * 100);
@@ -83,7 +92,6 @@ export class Player {
         }
     }
 
-    // [수정] 아이템 획득 메서드 추가 (필수)
     addItem(id, count = 1) {
         const existingItem = this.inventory.find(i => i.id === id);
         if (existingItem) {
@@ -94,7 +102,6 @@ export class Player {
         this.updateUI();
     }
 
-    // 아이템 사용/장착 분기
     useItem(itemId) {
         const idx = this.inventory.findIndex(i => i.id === itemId);
         if (idx === -1) return false;
@@ -102,38 +109,35 @@ export class Player {
         const itemData = getItem(itemId);
         if (!itemData) return false;
 
-        // 1. 장비 아이템 -> 장착/해제 토글
+        // 장비 -> 장착
         if (itemData.type >= 2) { 
             this.toggleEquip(itemData);
             return true; 
         }
 
-        // 2. 소모품 -> 효과 적용
+        // 소모품 -> 효과
         if (itemData.effect) {
             this.applyEffect(itemData.effect);
             this.inventory[idx].count--;
             if (this.inventory[idx].count <= 0) {
                 this.inventory.splice(idx, 1);
             }
-            this.ui.add(`💊 ${itemData.name} 사용함.`, 'event');
+            this.ui.add(`💊 ${itemData.name} 사용함.`, 'heal');
         }
 
         this.updateUI();
         return true; 
     }
 
-    // 장비 장착/해제 토글
     toggleEquip(item) {
         let slot = 'weapon';
         if (item.type === 3) slot = 'armor';
         if (item.type === 4) slot = 'acc';
 
-        // 이미 끼고 있는거면 해제
         if (this.equipment[slot] && this.equipment[slot].id === item.id) {
             this.equipment[slot] = null;
             this.ui.add(`🛡️ ${item.name} 해제.`, 'system');
         } else {
-            // 아니면 장착 (교체)
             this.equipment[slot] = item;
             this.ui.add(`⚔️ ${item.name} 장착!`, 'system');
         }
@@ -143,9 +147,7 @@ export class Player {
         switch(eff.type) {
             case 'heal': this.heal(eff.val, 'hp'); break;
             case 'heal_mp': this.heal(eff.val, 'mp'); break;
-            case 'food': 
-                this.hunger = Math.min(100, this.hunger + eff.val); 
-                break;
+            case 'food': this.hunger = Math.min(100, this.hunger + eff.val); break;
         }
     }
 
@@ -155,7 +157,7 @@ export class Player {
         this.updateUI();
     }
 
-    // 경험치 획득 (UI 즉시 반영 확인)
+    // 경험치 획득 및 SP 지급
     gainExp(amount) {
         this.exp += amount;
         
@@ -164,15 +166,26 @@ export class Player {
             this.exp -= this.nextExp;
             this.nextExp = Math.floor(this.nextExp * 1.5);
             
-            // 레벨업 보너스
-            this.maxHp += 20;
-            this.hp = this.maxHp; // 풀피 회복
-            this.baseStats.str += 2;
-            this.baseStats.dex += 1;
+            // 보너스: 최대 HP 증가 및 포인트 지급
+            this.maxHp += 10;
+            this.hp = this.maxHp;
+            this.statPoints += 3; // 레벨업당 3포인트
             
-            this.ui.add(`🆙 <b>레벨 업! (Lv.${this.lv})</b> 능력치 상승!`, 'event');
+            this.ui.add(`🆙 <b>레벨 업! (Lv.${this.lv})</b> SP 3 획득!`, 'event');
         }
         this.updateUI();
+    }
+
+    // 스탯 수동 투자
+    raiseStat(statKey) {
+        if (this.statPoints > 0) {
+            this.baseStats[statKey]++;
+            this.statPoints--;
+            this.ui.add(`💪 ${statKey.toUpperCase()} 스탯 상승!`, 'system');
+            this.updateUI();
+            return true;
+        }
+        return false;
     }
 
     consumeStamina(val) {
