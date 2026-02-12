@@ -5,91 +5,90 @@
     --accent-color: #bb86fc;
     --hp-color: #cf6679;
     --mp-color: #03dac6;
-    --hunger-color: #ff9800; /* 주황색 */
-    --fatigue-color: #90a4ae; /* 회색 */
+    --hunger-color: #ff9800;
+    --fatigue-color: #90a4ae;
     --border-color: #333;
 }
 
+/* Reset & Basic */
 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
 body { 
-    background-color: var(--bg-color); 
-    color: var(--text-color); 
-    font-family: 'Courier New', Courier, monospace;
-    overflow: hidden; 
-    height: 100vh;
+    background-color: var(--bg-color); color: var(--text-color); 
+    font-family: 'Courier New', monospace; overflow: hidden; height: 100vh;
 }
 #game-container {
     display: flex; flex-direction: column; height: 100%; max-width: 600px; margin: 0 auto;
     border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color);
-    position: relative; /* 모달 위치 기준 */
+    position: relative; 
 }
 
-/* --- 상태바 고도화 --- */
+/* Status Bar */
 #status-bar { padding: 10px; background: #1e1e1e; border-bottom: 1px solid var(--border-color); }
 .status-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
 .bar-container { display: flex; gap: 5px; margin-bottom: 4px; }
-.bar { flex: 1; height: 14px; background: #333; position: relative; border-radius: 4px; overflow: hidden; }
-.bar span { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 14px; color: #fff; text-shadow: 1px 1px 0 #000; z-index: 2; }
-
+.bar { flex: 1; height: 16px; background: #333; position: relative; border-radius: 4px; overflow: hidden; }
+.bar span { position: absolute; width: 100%; text-align: center; font-size: 10px; line-height: 16px; color: #fff; text-shadow: 1px 1px 0 #000; z-index: 2; }
 #hp-fill { height: 100%; background: var(--hp-color); transition: width 0.3s; }
 #mp-fill { height: 100%; background: var(--mp-color); transition: width 0.3s; }
 #hunger-fill { height: 100%; background: var(--hunger-color); transition: width 0.3s; }
 #fatigue-fill { height: 100%; background: var(--fatigue-color); transition: width 0.3s; }
 
-/* --- 로그 & 버튼 --- */
+/* Log & Actions */
 #log-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
 .log-entry { padding: 8px 10px; border-radius: 5px; font-size: 13px; line-height: 1.4; animation: fadeIn 0.3s; }
 .log-entry.system { align-self: center; background: #222; color: #aaa; }
-.log-entry.battle { color: #ff5555; border-left: 3px solid #ff5555; background: #2a1a1a; }
+.log-entry.battle { color: #ff5555; background: #2a1a1a; border-left: 3px solid #ff5555; }
 .log-entry.loot { color: #ffd700; border: 1px solid #554400; }
+.log-entry.event { color: var(--accent-color); font-weight: bold; }
 
 #action-bar { padding: 10px; background: #1e1e1e; border-top: 1px solid var(--border-color); display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .btn { padding: 15px 0; background: #333; color: white; border: none; border-radius: 6px; cursor: pointer; }
 .btn:active { background: #555; }
 
-/* --- 모달 (팝업창) 스타일 --- */
+/* Modal */
 .modal {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85); /* 반투명 배경 */
+    background: rgba(0, 0, 0, 0.9); z-index: 100;
     display: flex; justify-content: center; align-items: center;
-    z-index: 100;
-    backdrop-filter: blur(5px);
 }
 .modal.hidden { display: none; }
-
 .modal-content {
     background: var(--modal-bg); width: 90%; max-height: 90%;
-    border: 1px solid var(--accent-color); border-radius: 10px;
-    padding: 20px; display: flex; flex-direction: column; gap: 15px;
-    overflow-y: auto; text-align: center;
-    box-shadow: 0 0 20px rgba(187, 134, 252, 0.2);
+    border: 1px solid var(--accent-color); border-radius: 10px; padding: 20px;
+    display: flex; flex-direction: column; gap: 15px; overflow-y: auto; text-align: center;
 }
-
 .btn-close { padding: 10px; background: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
 
-/* 인벤토리 그리드 */
+/* Inventory Grid & Badge */
 .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
-.inv-item { background: #2a2a2a; border: 1px solid #444; padding: 10px; border-radius: 5px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 12px; }
-.inv-item:hover { border-color: var(--accent-color); background: #333; }
-.inv-item img { width: 32px; height: 32px; background: #000; border-radius: 50%; }
+.inv-item { 
+    background: #2a2a2a; border: 1px solid #444; padding: 10px; border-radius: 5px; 
+    cursor: pointer; position: relative; display: flex; flex-direction: column; gap: 5px; 
+}
+.inv-item.equipped { border: 2px solid var(--accent-color); background: #332244; }
+.equip-badge {
+    position: absolute; top: -5px; right: -5px; background: var(--accent-color); color: #000;
+    font-weight: bold; font-size: 10px; width: 18px; height: 18px; border-radius: 50%;
+    display: flex; justify-content: center; align-items: center;
+}
+.item-name { font-size: 12px; font-weight: bold; }
+.item-count { font-size: 11px; color: #888; }
 
-/* 전투 모달 스타일 */
+/* Status Detail Grid */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; background: #222; padding: 10px; border-radius: 5px; }
+
+/* Combat Layout */
 .combat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.combat-entity { display: flex; flex-direction: column; align-items: center; width: 40%; }
-.entity-avatar { font-size: 40px; margin-bottom: 5px; animation: float 2s infinite ease-in-out; }
-.mini-bar { width: 100%; height: 6px; background: #444; border-radius: 3px; margin: 3px 0; overflow: hidden; }
-.mini-bar div { height: 100%; background: #f00; transition: width 0.2s; }
-.vs-badge { font-size: 24px; font-weight: bold; color: #ff5555; font-style: italic; }
+.combat-entity { width: 40%; text-align: center; }
+.entity-avatar { font-size: 40px; margin-bottom: 5px; }
+.mini-bar { width: 100%; height: 6px; background: #444; margin: 3px 0; border-radius: 3px; }
+.mini-bar div { height: 100%; background: #f00; transition: width 0.3s; }
 
-#dice-area { margin: 20px 0; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-#dice-visual { font-size: 60px; transition: transform 0.5s; cursor: pointer; }
-.rolling { animation: roll 0.5s infinite linear; }
+#dice-area { margin: 20px 0; min-height: 80px; text-align: center; }
+#dice-visual { font-size: 60px; display: inline-block; }
+.rolling { animation: rotate 0.5s infinite linear; }
+@keyframes rotate { 100% { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-.btn-combat { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: var(--accent-color); color: #000; border: none; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
-.btn-combat.secondary { background: #444; color: #fff; font-size: 14px; padding: 10px; }
-.btn-combat:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* 애니메이션 */
-@keyframes roll { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.btn-combat { width: 100%; padding: 15px; background: var(--accent-color); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-combat.secondary { background: #444; color: #fff; margin-top: 10px; }
