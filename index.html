@@ -8,7 +8,18 @@
 </head>
 <body>
 
-    <div id="game-container">
+    <div id="title-screen">
+        <h1 class="title-logo">TEXT RPG</h1>
+        <p class="subtitle">운명과 선택의 모험</p>
+        
+        <div class="login-box">
+            <input type="text" id="input-name" placeholder="모험가의 이름" maxlength="8">
+            <button id="btn-start" class="btn-title">게임 시작</button>
+        </div>
+        <p class="warning-text">※ 사망 시 데이터는 삭제됩니다.</p>
+    </div>
+
+    <div id="game-container" class="hidden">
         <header id="status-bar">
             <div class="top-row">
                 <div class="player-info">
@@ -22,7 +33,7 @@
             
             <div class="bar-group">
                 <div class="bar-label-row">
-                    <span class="label">❤️ HP</span>
+                    <span class="label">❤️ HP (체력)</span>
                     <span id="hp-text" class="value-text">100/100</span>
                 </div>
                 <div class="bar-track"><div id="hp-fill" class="bar-fill hp"></div></div>
@@ -30,7 +41,7 @@
 
             <div class="bar-group">
                 <div class="bar-label-row">
-                    <span class="label">💧 MP</span>
+                    <span class="label">🧠 Mental (정신력)</span>
                     <span id="mp-text" class="value-text">50/50</span>
                 </div>
                 <div class="bar-track"><div id="mp-fill" class="bar-fill mp"></div></div>
@@ -55,7 +66,7 @@
         </header>
 
         <main id="log-container">
-            <div class="log-entry system">시스템 로딩 완료... 모험을 떠날 준비가 되었습니다.</div>
+            <div class="log-entry system">시스템 로딩 완료...</div>
         </main>
 
         <footer id="action-bar">
@@ -86,7 +97,7 @@
     <div id="modal-shop" class="modal hidden">
         <div class="modal-content">
             <h2>🏪 떠돌이 상인</h2>
-            <p>필요한 물건이 있나? (클릭하여 구매)</p>
+            <p id="shop-msg">필요한 물건이 있나?</p>
             <div id="shop-list" class="inventory-grid"></div>
             <button class="btn-close" onclick="game.ui.closeModals()">떠나기</button>
         </div>
