@@ -2,7 +2,7 @@ import { Dice } from './core/dice.js';
 import { Logger } from './core/logger.js';
 import { Player } from './core/player.js';
 import { CombatManager } from './core/combat.js';
-import { getRandomMonster, getItem } from './data/index.js';
+import { getRandomMonster, getItem, MONSTER_DB, ITEM_DB } from './data/index.js';
 
 class Game {
     constructor() {
@@ -16,13 +16,14 @@ class Game {
             this.ui = {
                 closeModals: () => {
                     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
-                }
+                },
+                add: (msg, type) => this.logger.add(msg, type) // Logger 연결
             };
-            window.game = this; // 전역 접근 허용
-            this.logger.add("게임이 정상적으로 로드되었습니다.");
+            window.game = this; 
+            this.logger.add("새로운 모험이 시작됩니다.");
         } catch (e) {
             console.error(e);
-            alert("게임 로딩 중 오류 발생! 콘솔을 확인하세요.");
+            alert("오류 발생!");
         }
     }
 
@@ -33,47 +34,133 @@ class Game {
     }
 
     handleMenu(action) {
-        if (this.combat.isBattle) return; // 전투 중 메뉴 잠금
+        if (this.combat.isBattle) return;
         switch(action) {
             case 'explore': this.explore(); break;
             case 'inventory': this.openInventory(); break;
             case 'status': this.openStatus(); break;
-            case 'rest': this.rest(); break;
+            case 'encyclopedia': this.openEncyclopedia(); break; // 휴식 대신 도감
         }
     }
 
+    // 1. 탐험 이벤트 확장
     explore() {
         if (this.player.hp <= 0) {
-            this.logger.add("💀 체력이 없어 움직일 수 없습니다. 휴식하세요.", "battle");
+            this.logger.add("💀 체력이 없어 움직일 수 없습니다.", "battle");
             return;
         }
-        this.player.consumeStamina(3);
+        if (this.player.fatigue >= 100) {
+            this.logger.add("💤 너무 피곤해서 움직일 수 없습니다. 여관을 찾으세요!", "event");
+            return;
+        }
 
+        this.player.consumeStamina(3);
         const roll = Math.random();
-        if (roll < 0.4) {
-            // 몬스터 조우
-            const mob = getRandomMonster(this.player.lv, this.player.lv+2);
+
+        // 이벤트 확률 분포
+        if (roll < 0.35) {
+            // [전투] 35%
+            const mob = getRandomMonster(this.player.lv, this.player.lv + 2);
             this.combat.startBattle(mob, (win, enemy) => {
                 if (win) {
-                    if (enemy) { // 처치 시
+                    if (enemy) {
+                        const goldReward = enemy.lv * 10 + Math.floor(Math.random() * 10);
                         this.logger.add(`🎉 <b>${enemy.name}</b> 처치!`, "loot");
                         this.player.gainExp(enemy.exp);
+                        this.player.gold += goldReward;
+                        this.logger.add(`💰 ${goldReward} Gold 획득!`, "loot");
                         
                         if(enemy.drop) {
                             this.player.addItem(enemy.drop);
                             const item = getItem(enemy.drop);
                             if(item) this.logger.add(`📦 [${item.name}] 획득!`, "loot");
                         }
-                    } else { // 도망 시
+                    } else {
                         this.logger.add("💨 무사히 도망쳤습니다.");
                     }
                 } else {
-                    this.logger.add("💀 사망했습니다...", "battle");
+                    this.logger.add("💀 눈앞이 깜깜해집니다...", "battle");
+                    // 사망 패널티 (경험치 감소 등) 추가 가능
                 }
             });
+
+        } else if (roll < 0.50) {
+            // [보물상자] 15%
+            const foundGold = Math.floor(Math.random() * 50) + 10;
+            this.logger.add(`🎁 낡은 보물상자를 발견했습니다! <b>${foundGold}G</b> 획득!`, "loot");
+            this.player.gold += foundGold;
+            this.player.updateUI();
+
+        } else if (roll < 0.60) {
+            // [떠돌이 상인] 10%
+            this.logger.add("👋 길가에서 떠돌이 상인을 만났습니다.", "event");
+            this.openShop();
+
+        } else if (roll < 0.70) {
+            // [여관 발견] 10% - 휴식 기능 대체
+            this.foundInn();
+
         } else {
-            const msgs = ["숲길을 걷습니다...", "바람이 붑니다.", "조용합니다."];
+            // [일반] 30%
+            const msgs = ["숲길을 걷습니다...", "바람이 상쾌합니다.", "어디선가 새소리가 들립니다."];
             this.logger.add(msgs[Math.floor(Math.random()*msgs.length)]);
+        }
+    }
+
+    // 2. 상점 기능
+    openShop() {
+        const list = document.getElementById('shop-list');
+        list.innerHTML = '';
+        
+        // 랜덤으로 3~4개의 판매 아이템 선정 (소모품 위주 + 저렙 장비)
+        const saleItems = [1, 5, 8, 9, 21, 28, 101, 151]; // ID 목록
+        
+        saleItems.forEach(id => {
+            const item = getItem(id);
+            if(!item) return;
+            const price = item.val * 2; // 구매가는 가치의 2배로 설정
+
+            const div = document.createElement('div');
+            div.className = 'inv-item';
+            div.innerHTML = `
+                <div class="item-name">${item.name}</div>
+                <div class="item-price">💰 ${price}G</div>
+            `;
+            div.onclick = () => this.buyItem(item, price);
+            list.appendChild(div);
+        });
+
+        document.getElementById('modal-shop').classList.remove('hidden');
+    }
+
+    buyItem(item, price) {
+        if (this.player.gold >= price) {
+            this.player.gold -= price;
+            this.player.addItem(item.id, 1);
+            this.logger.add(`🛒 ${item.name} 구매 완료!`, "loot");
+            this.player.updateUI();
+        } else {
+            alert("골드가 부족합니다!");
+        }
+    }
+
+    // 3. 여관 (휴식) 기능
+    foundInn() {
+        const cost = 50;
+        if (confirm(`🏨 숲속의 낡은 여관을 발견했습니다.\n${cost}골드를 내고 푹 쉬시겠습니까?\n(체력/마나/피로도 완전 회복)`)) {
+            if (this.player.gold >= cost) {
+                this.player.gold -= cost;
+                this.player.heal(9999, 'hp');
+                this.player.heal(9999, 'mp');
+                this.player.fatigue = 0;
+                this.player.hunger = 100; // 밥도 먹여줌
+                this.logger.add("🛌 여관에서 푹 쉬었습니다. 컨디션 최고!", "heal");
+                this.player.updateUI();
+            } else {
+                this.logger.add("💸 돈이 없어서 쫓겨났습니다...", "battle");
+            }
+        } else {
+            this.logger.add("여관을 지나쳤습니다.");
         }
     }
 
@@ -88,15 +175,12 @@ class Game {
             const item = getItem(slot.id);
             if(!item) return;
 
-            // 장착 여부 확인 (E 표시용)
             const isEquipped = (p.equipment.weapon?.id === item.id) || 
                                (p.equipment.armor?.id === item.id) || 
                                (p.equipment.acc?.id === item.id);
 
             const div = document.createElement('div');
             div.className = `inv-item ${isEquipped ? 'equipped' : ''}`;
-            
-            // E 배지 HTML
             let badge = isEquipped ? '<span class="equip-badge">E</span>' : '';
             
             div.innerHTML = `
@@ -107,7 +191,7 @@ class Game {
             
             div.onclick = () => {
                 const updated = p.useItem(slot.id);
-                if(updated) this.openInventory(); // 목록 갱신
+                if(updated) this.openInventory();
             };
             list.appendChild(div);
         });
@@ -115,40 +199,87 @@ class Game {
         document.getElementById('modal-inventory').classList.remove('hidden');
     }
 
+    // 4. 스탯 수동 투자 UI
     openStatus() {
         const p = this.player;
-        const s = p.getCombatStats(); // 종합 스탯
+        const s = p.getCombatStats();
+        const base = p.baseStats;
 
-        // 상세 정보 HTML 구성
+        const makeRow = (label, key, val, total) => `
+            <div class="stat-row">
+                <span>${label} <small>(+${total-val})</small></span>
+                <div>
+                    <span id="val-${key}">${val}</span>
+                    <button class="btn-up" onclick="game.upStat('${key}')" ${p.statPoints > 0 ? '' : 'disabled'}>+</button>
+                </div>
+            </div>
+        `;
+
         const detailHTML = `
+            ${makeRow("💪 근력(STR)", "str", base.str, s.str)}
+            ${makeRow("🏃 민첩(DEX)", "dex", base.dex, s.dex)}
+            ${makeRow("🧠 지능(INT)", "int", base.int, s.int)}
+            ${makeRow("🍀 행운(LUK)", "luk", base.luk, s.luk)}
+            <hr>
             <div class="stat-row"><span>⚔️ 공격력</span> <span>${s.atk}</span></div>
             <div class="stat-row"><span>🛡️ 방어력</span> <span>${s.def}</span></div>
-            <div class="stat-row"><span>💪 근력(STR)</span> <span>${s.str}</span></div>
-            <div class="stat-row"><span>🏃 민첩(DEX)</span> <span>${s.dex}</span></div>
-            <div class="stat-row"><span>🧠 지능(INT)</span> <span>${s.int}</span></div>
-            <div class="stat-row"><span>🍀 행운(LUK)</span> <span>${s.luk}</span></div>
-            <hr>
-            <div class="stat-row"><span>⚔️ 전투 횟수</span> <span>${p.fightCount}회</span></div>
-            <div class="stat-row"><span>📈 경험치</span> <span>${p.exp} / ${p.nextExp}</span></div>
-            <hr>
             <div class="stat-equip">
-                <p>🗡️ 무기: ${p.equipment.weapon ? p.equipment.weapon.name : '(없음)'}</p>
-                <p>🛡️ 방어: ${p.equipment.armor ? p.equipment.armor.name : '(없음)'}</p>
-                <p>💍 장신: ${p.equipment.acc ? p.equipment.acc.name : '(없음)'}</p>
+                <p>🗡️: ${p.equipment.weapon ? p.equipment.weapon.name : '-'}</p>
+                <p>🛡️: ${p.equipment.armor ? p.equipment.armor.name : '-'}</p>
+                <p>💍: ${p.equipment.acc ? p.equipment.acc.name : '-'}</p>
             </div>
         `;
         
         document.getElementById('stat-detail-area').innerHTML = detailHTML;
+        document.getElementById('sp-display').innerText = `남은 포인트(SP): ${p.statPoints}`;
         document.getElementById('modal-status').classList.remove('hidden');
     }
 
-    rest() {
-        this.logger.add("⛺ 휴식을 취해 체력을 회복합니다.", "event");
-        this.player.heal(30, 'hp');
-        this.player.heal(10, 'mp');
-        this.player.consumeStamina(5);
+    upStat(key) {
+        if (this.player.raiseStat(key)) {
+            this.openStatus(); // UI 갱신
+        } else {
+            alert("포인트가 부족합니다!");
+        }
+    }
+
+    // 5. 도감 기능
+    openEncyclopedia() {
+        this.switchDex('monster');
+        document.getElementById('modal-encyclopedia').classList.remove('hidden');
+    }
+
+    switchDex(type) {
+        const list = document.getElementById('dex-list');
+        list.innerHTML = '';
+        
+        // 탭 활성화 스타일 처리
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        const btnIdx = type === 'monster' ? 0 : 1;
+        document.querySelectorAll('.tab-btn')[btnIdx].classList.add('active');
+
+        if (type === 'monster') {
+            MONSTER_DB.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'dex-item';
+                div.innerHTML = `
+                    <span class="name">[Lv.${m.lv}] ${m.name}</span>
+                    <span class="desc">HP:${m.hp}</span>
+                `;
+                list.appendChild(div);
+            });
+        } else {
+            ITEM_DB.forEach(i => {
+                const div = document.createElement('div');
+                div.className = 'dex-item';
+                div.innerHTML = `
+                    <span class="name">${i.name}</span>
+                    <span class="desc">${i.val}G</span>
+                `;
+                list.appendChild(div);
+            });
+        }
     }
 }
 
-// 안전한 시작
 window.onload = () => new Game();
