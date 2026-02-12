@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Text RPG: The Vibe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+        
+        <header id="status-bar">
+            <div class="status-row">
+                <span id="player-name">플레이어</span>
+                <span id="player-lv">LV.1</span>
+            </div>
+            <div class="bar-container">
+                <div class="bar hp-bar"><div id="hp-fill" style="width: 100%;"></div><span id="hp-text">100/100</span></div>
+                <div class="bar mp-bar"><div id="mp-fill" style="width: 100%;"></div><span id="mp-text">50/50</span></div>
+            </div>
+            <div class="status-info">
+                <span id="location-text">📍 어둠의 숲 입구</span>
+                <span id="time-text">☀️ 낮</span>
+            </div>
+        </header>
+
+        <main id="log-container">
+            <div class="log-entry system">게임이 시작되었습니다.</div>
+        </main>
+
+        <footer id="action-bar">
+            <button class="btn" data-action="explore">탐험하기</button>
+            <button class="btn" data-action="inventory">가방</button>
+            <button class="btn" data-action="status">상태</button>
+            <button class="btn" data-action="rest">휴식</button>
+        </footer>
+
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
