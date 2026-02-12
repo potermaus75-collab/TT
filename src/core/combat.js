@@ -3,164 +3,137 @@ export class CombatManager {
         this.player = player;
         this.dice = dice;
         this.logger = logger;
-        this.currentEnemy = null;
-        this.isBattleActive = false;
+        this.enemy = null;
+        this.isBattle = false;
         
-        // 전투 턴 처리를 위한 콜백 (Main에서 받음)
-        this.onBattleEnd = null; 
+        // DOM 요소 캐싱
+        this.modal = document.getElementById('modal-combat');
+        this.btnRoll = document.getElementById('btn-roll-dice');
+        this.diceVisual = document.getElementById('dice-visual');
+        this.diceMsg = document.getElementById('dice-message');
+        this.combatLog = document.getElementById('combat-log-mini');
+        
+        // 이벤트 연결
+        this.btnRoll.onclick = () => this.rollDicePhase();
+        document.getElementById('btn-combat-run').onclick = () => this.tryRun();
     }
 
-    /**
-     * 전투 시작
-     */
+    // 전투 시작 (모달 열기)
     startBattle(enemyData, endCallback) {
-        // 적 데이터 깊은 복사 (전투 중 HP 깎아야 하므로)
-        this.currentEnemy = JSON.parse(JSON.stringify(enemyData));
-        this.isBattleActive = true;
-        this.onBattleEnd = endCallback;
+        this.enemy = JSON.parse(JSON.stringify(enemyData)); // 복사
+        this.isBattle = true;
+        this.endCallback = endCallback;
+        this.player.fightCount++;
 
-        this.logger.add(`⚔️ <b>${this.currentEnemy.name}</b>(Lv.${this.currentEnemy.lv})가 나타났다!`, 'event');
-        this.logger.add(`[전투 시작] 적의 체력: ${this.currentEnemy.hp}, 공격력: ${this.currentEnemy.atk}`);
+        // 모달 UI 초기화
+        this.modal.classList.remove('hidden');
+        this.btnRoll.disabled = false;
+        this.diceMsg.innerText = "주사위를 굴려 선공을 정하세요!";
+        this.combatLog.innerHTML = ""; // 로그 초기화
+        
+        this.updateCombatUI();
+        this.log(`⚔️ ${this.enemy.name} (Lv.${this.enemy.lv}) 조우!`);
     }
 
-    /**
-     * 플레이어의 공격 턴
-     */
-    playerAttack() {
-        if (!this.isBattleActive) return;
+    // 화면 갱신 (HP바 등)
+    updateCombatUI() {
+        // 적 정보
+        document.getElementById('enemy-name').innerText = this.enemy.name;
+        document.getElementById('enemy-hp-text').innerText = `HP ${this.enemy.hp}`;
+        const enemyHpPct = Math.max(0, (this.enemy.hp / 100) * 100); // MaxHP 정보가 없으니 대충 100 기준..이 아니라 DB에 maxHp가 없네? 일단 현재 hp기준으로
+        document.getElementById('enemy-hp-bar').style.width = `100%`; // 그냥 꽉 채우기 (데이터 부족)
 
-        // 1. 명중 판정 (내 DEX vs 적 회피/방어)
-        // 적에게 별도 회피 스탯이 없으면 기본 방어력(def) 활용
-        // DEX가 적 방어력보다 5 높으면 'advantage'
-        const checkType = this.dice.compareStats(this.player.stats.dex, this.currentEnemy.def);
-        const hitRoll = this.dice.rollCheck(checkType);
+        // 내 정보 (전투 모달 내)
+        document.getElementById('combat-player-hp-text').innerText = `HP ${Math.floor(this.player.hp)}`;
+        document.getElementById('combat-player-hp-bar').style.width = `${(this.player.hp / this.player.maxHp)*100}%`;
+    }
 
-        this.logger.add(`주사위 굴림: ${hitRoll.total} ${hitRoll.type !== 'normal' ? '(' + hitRoll.type + ')' : ''}`);
+    // 주사위 굴리기 액션
+    rollDicePhase() {
+        this.btnRoll.disabled = true;
+        this.diceVisual.classList.add('rolling');
+        this.diceMsg.innerText = "주사위 굴리는 중...";
 
-        // 대실패 (Fumble)
-        if (hitRoll.isFumble) {
-            this.logger.add(`❌ 공격이 빗나갔습니다! (대실패)`, 'battle');
-            this.enemyTurn(); // 턴 넘어감
+        // 0.6초 뒤 결과
+        setTimeout(() => {
+            this.diceVisual.classList.remove('rolling');
+            const roll = this.dice.roll(); // 1~20
+            this.diceVisual.innerText = roll; // 숫자 보여주기
+
+            this.resolveTurn(roll);
+        }, 600);
+    }
+
+    // 턴 결과 계산
+    resolveTurn(roll) {
+        // 1. 플레이어 공격 (주사위 숫자에 따라 보정)
+        let hitChance = roll;
+        // 보정: 내 DEX vs 적 방어
+        // (간단히: 10 이상이면 명중, 20은 크리, 1은 빗나감)
+        
+        if (roll === 1) {
+            this.log(`❌ 대실패! 발이 미끄러졌습니다.`);
+        } else if (roll >= 10) {
+            // 데미지 계산
+            let dmg = Math.max(1, this.player.stats.str - Math.floor(this.enemy.def / 2));
+            if (roll === 20) {
+                dmg *= 2; 
+                this.log(`🔥 [CRITICAL] 급소 가격!`);
+            }
+            this.enemy.hp -= dmg;
+            this.log(`🗡️ 당신의 공격! ${dmg} 피해.`);
+        } else {
+            this.log(`💨 공격이 빗나갔습니다.`);
+        }
+
+        // 적 사망 체크
+        if (this.enemy.hp <= 0) {
+            this.endBattle(true);
             return;
         }
 
-        // 명중 실패 (AC 10 기준 - 혹은 적 레벨 비례)
-        // 여기서는 간단히 주사위 8 이상이면 명중으로 설정
-        if (hitRoll.total < 8) {
-             this.logger.add(`💨 공격이 빗나갔습니다.`, 'battle');
-             this.enemyTurn();
-             return;
-        }
-
-        // 2. 데미지 계산
-        let damage = Math.floor(this.player.stats.str * 1.5) - Math.floor(this.currentEnemy.def / 2);
-        
-        // 치명타 보정
-        if (hitRoll.isCrit) {
-            damage *= 2;
-            this.logger.add(`🔥 <b>치명타!</b> 급소를 가격했습니다!`, 'battle');
-        }
-
-        if (damage < 1) damage = 1; // 최소 데미지
-
-        // 적 HP 차감
-        this.currentEnemy.hp -= damage;
-        this.logger.add(`🗡️ ${this.currentEnemy.name}에게 <b>${damage}</b>의 피해를 입혔습니다.`);
-
-        // 3. 적 사망 체크
-        if (this.currentEnemy.hp <= 0) {
-            this.winBattle();
-        } else {
-            // 적이 살아있으면 적의 턴
-            setTimeout(() => this.enemyTurn(), 800); // 0.8초 딜레이로 턴 구분
-        }
+        // 2. 적의 반격 (잠시 후)
+        setTimeout(() => {
+            this.enemyAttack();
+        }, 800);
     }
 
-    /**
-     * 적의 공격 턴
-     */
-    enemyTurn() {
-        if (!this.isBattleActive) return;
-
-        this.logger.add(`${this.currentEnemy.name}의 공격!`, 'enemy');
-
-        // 적의 명중 판정 (적 레벨 vs 내 민첩)
-        // 내 민첩이 높으면 적은 'disadvantage'를 가짐
-        const checkType = this.dice.compareStats(this.currentEnemy.lv * 2, this.player.stats.dex);
-        // *주의: 여기서 checkType은 적 입장이므로, 내 dex가 높으면 적은 disadvantage여야 함.
-        // compareStats 로직 상 (적 공격 - 내 민첩) < -5 이면 disadvantage. 
-        
-        const hitRoll = this.dice.rollCheck(checkType);
-
-        if (hitRoll.isFumble || hitRoll.total < 8) {
-            this.logger.add(`🛡️ 적의 공격을 가볍게 피했습니다.`);
-            // 플레이어 턴으로 복귀 (UI 활성화는 Main에서 처리)
-            return; 
-        }
-
-        // 데미지 계산 (적 공격력 - 내 방어력)
-        // 방어구 구현 전이라 방어력 0 가정
-        let defense = 0; 
-        let damage = this.currentEnemy.atk - defense;
-        if (hitRoll.isCrit) damage *= 1.5;
-        if (damage < 1) damage = 1;
-
-        const isDead = this.player.takeDamage(Math.floor(damage));
-        this.logger.add(`💥 <b>${Math.floor(damage)}</b>의 피해를 입었습니다!`, 'enemy');
+    enemyAttack() {
+        const dmg = Math.max(0, this.enemy.atk - Math.floor(this.player.stats.dex / 3)); // 대충 방어 공식
+        const isDead = this.player.takeDamage(dmg);
+        this.log(`🛡️ 적의 반격! ${dmg} 피해를 입었습니다.`);
+        this.updateCombatUI();
 
         if (isDead) {
-            this.loseBattle();
-        }
-        // 플레이어 턴으로 자동 복귀 (Main Loop에서 버튼 활성화)
-    }
-
-    /**
-     * 승리 처리
-     */
-    winBattle() {
-        this.isBattleActive = false;
-        this.logger.add(`🎉 <b>${this.currentEnemy.name}</b>을(를) 처치했습니다!`, 'loot');
-        
-        // 보상 지급
-        const exp = this.currentEnemy.exp;
-        this.player.gainExp(exp);
-        this.logger.add(`✨ 경험치 ${exp} 획득.`);
-
-        // 드랍 아이템 (확률)
-        if (Math.random() < 0.5 && this.currentEnemy.drop) {
-            this.player.addItem(this.currentEnemy.drop, 1);
-            this.logger.add(`📦 전리품을 획득했습니다. (ID: ${this.currentEnemy.drop})`, 'loot');
-        }
-
-        if (this.onBattleEnd) this.onBattleEnd(true);
-    }
-
-    /**
-     * 패배 처리
-     */
-    loseBattle() {
-        this.isBattleActive = false;
-        this.logger.add(`💀 <b>사망했습니다...</b> 눈앞이 캄캄해집니다.`, 'enemy');
-        if (this.onBattleEnd) this.onBattleEnd(false);
-    }
-    
-    /**
-     * 도망치기
-     */
-    tryRun() {
-        if (!this.isBattleActive) return false;
-        
-        // 민첩 비례 확률
-        const runChance = this.dice.roll();
-        if (runChance > 10) { // 50% 확률 (임시)
-            this.isBattleActive = false;
-            this.logger.add(`💨 필사적으로 도망쳤습니다!`);
-            if (this.onBattleEnd) this.onBattleEnd(true); // 살았으니 true 취급
-            return true;
+            this.endBattle(false);
         } else {
-            this.logger.add(`😓 도망치지 못했습니다! 발이 묶였습니다.`);
-            this.enemyTurn(); // 턴 넘어감
-            return false;
+            // 다시 플레이어 턴
+            this.btnRoll.disabled = false;
+            this.diceMsg.innerText = "당신의 차례입니다.";
         }
+    }
+
+    endBattle(win) {
+        setTimeout(() => {
+            this.modal.classList.add('hidden'); // 모달 닫기
+            this.isBattle = false;
+            this.endCallback(win, this.enemy);
+        }, 1500);
+    }
+
+    tryRun() {
+        if(Math.random() > 0.5) {
+            this.log("🏃 도망 성공!");
+            this.endBattle(true); // 도망은 승리는 아니지만 생존
+        } else {
+            this.log("잡혔습니다!");
+            this.enemyAttack();
+        }
+    }
+
+    log(msg) {
+        const p = document.createElement('div');
+        p.innerText = msg;
+        this.combatLog.prepend(p); // 최신 로그가 위로
     }
 }
