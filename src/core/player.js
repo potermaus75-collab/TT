@@ -1,143 +1,144 @@
-import { ITEM_DB } from '../data/index.js'; // 나중에 아이템 DB 필요
+import { getItem } from '../data/index.js'; 
 
 export class Player {
     constructor(uiController) {
-        this.ui = uiController; // Logger 인스턴스 등 UI 제어기
+        this.ui = uiController;
 
-        // 1. 기본 정보
-        this.name = "방랑자";
+        // 기본 정보
+        this.name = "모험가";
         this.lv = 1;
         this.exp = 0;
         this.nextExp = 100;
+        this.fightCount = 0; // 총 싸움 횟수
+
+        // 스탯
+        this.stats = { str: 10, dex: 10, int: 10, luk: 10 };
+
+        // 생존 수치
+        this.maxHp = 100; this.hp = 100;
+        this.maxMp = 50;  this.mp = 50;
+        this.hunger = 100; // 포만감
+        this.fatigue = 0;  // 피로도
+
+        // 인벤토리 & 효과
+        this.inventory = []; // { id, count }
+        this.equipment = { weapon: null, armor: null, acc: null };
+        this.buffs = []; // { name, desc, turn, stat, val }
+
+        // 테스트용 아이템 지급 (시작할 때)
+        this.addItem(1, 3); // 약초 3개
+        this.addItem(101, 1); // 단검
         
-        // 2. 전투 스탯 (힘, 민, 지, 운)
-        this.stats = {
-            str: 10, // 근력 (물리 공격력)
-            dex: 10, // 민첩 (명중률, 도주)
-            int: 10, // 지능 (마법, 저항)
-            luk: 10  // 운 (치명타, 드랍율)
-        };
-
-        // 3. 생존 스탯
-        this.maxHp = 100;
-        this.hp = 100;
-        this.maxMp = 50;
-        this.mp = 50;
-        
-        this.hunger = 100; // 포만감 (0 되면 HP 감소)
-        this.fatigue = 0;  // 피로도 (100 되면 행동 불가)
-
-        // 4. 인벤토리 & 장비
-        this.inventory = []; // {id, count} 형태
-        this.gold = 0;
-        this.equipment = {
-            weapon: null, // 아이템 객체
-            armor: null,
-            acc: null
-        };
-
-        // 초기화 시 UI 한 번 갱신
         this.updateUI();
     }
 
-    /**
-     * 상태창 UI 갱신 (HP, MP 바, 레벨 등)
-     */
+    // UI 전체 갱신
     updateUI() {
-        // 텍스트 갱신
-        document.getElementById('player-name').innerText = this.name;
-        document.getElementById('player-lv').innerText = `LV.${this.lv}`;
-        document.getElementById('hp-text').innerText = `${Math.floor(this.hp)}/${this.maxHp}`;
-        document.getElementById('mp-text').innerText = `${Math.floor(this.mp)}/${this.maxMp}`;
+        // 상단 바 텍스트 & 게이지
+        const updateBar = (id, cur, max, color) => {
+            const pct = Math.max(0, Math.min(100, (cur / max) * 100));
+            document.getElementById(`${id}-fill`).style.width = `${pct}%`;
+            document.getElementById(`${id}-text`).innerText = `${id.toUpperCase()} ${Math.floor(cur)}/${max}`;
+        };
 
-        // 게이지 바(CSS width) 갱신
-        const hpPercent = Math.max 
-(0, Math.min(100, (this.hp / this.maxHp) * 100));
-        const mpPercent = Math.max(0, Math.min(100, (this.mp / this.maxMp) * 100));
+        // HP, MP
+        updateBar('hp', this.hp, this.maxHp);
+        updateBar('mp', this.mp, this.maxMp);
         
-        document.getElementById('hp-fill').style.width = `${hpPercent}%`;
-        document.getElementById('mp-fill').style.width = `${mpPercent}%`;
-    }
-
-    /**
-     * 데미지 처리
-     */
-    takeDamage(amount) {
-        this.hp -= amount;
-        if (this.hp < 0) this.hp = 0;
-        this.updateUI();
+        // Hunger, Fatigue (얘네는 최대치가 100 고정)
+        document.getElementById('hunger-fill').style.width = `${this.hunger}%`;
+        document.getElementById('hunger-text').innerText = `포만감 ${this.hunger}`;
         
-        // 피격 효과 (화면 흔들림)
-        document.body.classList.add('shake-screen');
-        setTimeout(() => document.body.classList.remove('shake-screen'), 500);
+        document.getElementById('fatigue-fill').style.width = `${this.fatigue}%`;
+        document.getElementById('fatigue-text').innerText = `피로도 ${this.fatigue}`;
 
-        return this.hp <= 0; // 사망 여부 반환
+        // 레벨 텍스트
+        const expPct = Math.floor((this.exp / this.nextExp) * 100);
+        document.getElementById('player-lv').innerText = `LV.${this.lv} (${expPct}%)`;
     }
 
-    /**
-     * 회복 처리
-     */
-    heal(amount, type='hp') {
-        if(type === 'hp') {
-            this.hp += amount;
-            if (this.hp > this.maxHp) this.hp = this.maxHp;
-        } else {
-            this.mp += amount;
-            if (this.mp > this.maxMp) this.mp = this.maxMp;
-        }
-        this.updateUI();
-    }
-
-    /**
-     * 경험치 획득 및 레벨업
-     */
-    gainExp(amount) {
-        this.exp += amount;
-        
-        // 레벨업 루프 (한 번에 2업 할 수도 있으니)
-        while (this.exp >= this.nextExp) {
-            this.lv++;
-            this.exp -= this.nextExp;
-            this.nextExp = Math.floor(this.nextExp * 1.5); // 경험치 요구량 1.5배 증가
-            
-            // 스탯 상승
-            this.maxHp += 20;
-            this.maxMp += 10;
-            this.hp = this.maxHp;
-            this.mp = this.maxMp;
-            
-            this.stats.str += 2;
-            this.stats.dex += 2;
-            
-            // 레벨업 로그는 외부(Logger)에서 호출하거나 여기서 직접 호출
-            this.ui.add(`✨ <b>레벨 업! (Lv.${this.lv})</b> 최대 체력이 증가했습니다!`, 'event');
-        }
-        this.updateUI();
-    }
-
-    /**
-     * 아이템 획득
-     */
+    // 아이템 획득
     addItem(itemId, count = 1) {
         const existing = this.inventory.find(i => i.id === itemId);
-        if (existing) {
-            existing.count += count;
-        } else {
-            this.inventory.push({ id: itemId, count: count });
+        if (existing) existing.count += count;
+        else this.inventory.push({ id: itemId, count: count });
+    }
+
+    // 아이템 사용 (가방에서 호출)
+    useItem(itemId) {
+        const itemIdx = this.inventory.findIndex(i => i.id === itemId);
+        if (itemIdx === -1) return false;
+
+        const itemData = getItem(itemId);
+        if (!itemData) return false;
+
+        // 장비 아이템이면 장착
+        if (itemData.type >= 2) { 
+            this.equipItem(itemData);
+            return true; // 턴 소모 안함 (장착은 자유)
+        }
+
+        // 소모품 효과 적용
+        if (itemData.effect) {
+            this.applyEffect(itemData.effect);
+        }
+
+        // 소모 처리
+        this.inventory[itemIdx].count--;
+        if (this.inventory[itemIdx].count <= 0) {
+            this.inventory.splice(itemIdx, 1);
+        }
+        
+        this.ui.add(`💊 ${itemData.name}을(를) 사용했습니다.`, 'event');
+        this.updateUI();
+        return true; // 턴 소모
+    }
+
+    // 아이템 효과 적용 로직
+    applyEffect(eff) {
+        switch(eff.type) {
+            case 'heal': this.heal(eff.val, 'hp'); break;
+            case 'heal_mp': this.heal(eff.val, 'mp'); break;
+            case 'food': 
+                this.hunger = Math.min(100, this.hunger + eff.val); 
+                break;
+            case 'buff':
+                this.buffs.push({ name: '일시적 강화', desc: `${eff.stat} 증가`, turn: eff.dur/60, stat: eff.stat, val: eff.val });
+                break;
         }
     }
 
-    /**
-     * 행동에 따른 생존 수치 변화 (이동 등)
-     */
-    consumeStamina(cost = 5) {
-        this.hunger -= cost;
-        this.fatigue += cost;
+    // 장비 장착
+    equipItem(itemData) {
+        let slot = 'weapon';
+        if (itemData.type === 3) slot = 'armor';
+        if (itemData.type === 4) slot = 'acc';
 
-        if (this.hunger <= 0) {
+        // 기존 장비 해제 (인벤토리로 복귀 안함? -> 귀찮으니 그냥 교체만 구현)
+        this.equipment[slot] = itemData;
+        this.ui.add(`⚔️ ${itemData.name}을(를) 장착했습니다.`, 'system');
+    }
+
+    heal(amount, type) {
+        if(type === 'hp') this.hp = Math.min(this.maxHp, this.hp + amount);
+        else this.mp = Math.min(this.maxMp, this.mp + amount);
+        this.updateUI();
+    }
+
+    consumeStamina(val) {
+        this.hunger -= val;
+        this.fatigue += val;
+        if(this.hunger <= 0) {
             this.hunger = 0;
-            this.takeDamage(5); // 아사 데미지
-            this.ui.add("배가 너무 고파서 쓰러질 것 같습니다...", "battle");
+            this.takeDamage(5);
+            this.ui.add("배가 고파서 체력이 깎입니다!", "battle");
         }
+        this.updateUI();
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        this.updateUI();
+        return this.hp <= 0;
     }
 }
