@@ -1,3 +1,4 @@
+/* ... 기존 변수 및 리셋 유지 ... */
 :root {
     --bg-color: #121212;
     --modal-bg: #1e1e1e;
@@ -10,19 +11,10 @@
     --border-color: #333;
 }
 
-/* Reset & Basic */
-* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-body { 
-    background-color: var(--bg-color); color: var(--text-color); 
-    font-family: 'Courier New', monospace; overflow: hidden; height: 100vh;
-}
-#game-container {
-    display: flex; flex-direction: column; height: 100%; max-width: 600px; margin: 0 auto;
-    border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color);
-    position: relative; 
-}
+body { background: var(--bg-color); color: var(--text-color); font-family: 'Courier New', monospace; overflow: hidden; height: 100vh; margin: 0; }
+#game-container { display: flex; flex-direction: column; height: 100%; max-width: 600px; margin: 0 auto; border: 1px solid var(--border-color); position: relative; }
 
-/* Status Bar */
+/* 상태바 */
 #status-bar { padding: 10px; background: #1e1e1e; border-bottom: 1px solid var(--border-color); }
 .status-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
 .bar-container { display: flex; gap: 5px; margin-bottom: 4px; }
@@ -33,62 +25,47 @@ body {
 #hunger-fill { height: 100%; background: var(--hunger-color); transition: width 0.3s; }
 #fatigue-fill { height: 100%; background: var(--fatigue-color); transition: width 0.3s; }
 
-/* Log & Actions */
-#log-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; scroll-behavior: smooth; }
-.log-entry { padding: 8px 10px; border-radius: 5px; font-size: 13px; line-height: 1.4; animation: fadeIn 0.3s; }
+/* 로그 및 버튼 */
+#log-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+.log-entry { padding: 8px 10px; border-radius: 5px; font-size: 13px; animation: fadeIn 0.3s; }
 .log-entry.system { align-self: center; background: #222; color: #aaa; }
-.log-entry.battle { color: #ff5555; background: #2a1a1a; border-left: 3px solid #ff5555; }
 .log-entry.loot { color: #ffd700; border: 1px solid #554400; }
+.log-entry.battle { color: #ff5555; background: #2a1a1a; border-left: 3px solid #ff5555; }
 .log-entry.event { color: var(--accent-color); font-weight: bold; }
 
 #action-bar { padding: 10px; background: #1e1e1e; border-top: 1px solid var(--border-color); display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
 .btn { padding: 15px 0; background: #333; color: white; border: none; border-radius: 6px; cursor: pointer; }
 .btn:active { background: #555; }
 
-/* Modal */
-.modal {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.9); z-index: 100;
-    display: flex; justify-content: center; align-items: center;
-}
+/* 모달 */
+.modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; display: flex; justify-content: center; align-items: center; }
 .modal.hidden { display: none; }
-.modal-content {
-    background: var(--modal-bg); width: 90%; max-height: 90%;
-    border: 1px solid var(--accent-color); border-radius: 10px; padding: 20px;
-    display: flex; flex-direction: column; gap: 15px; overflow-y: auto; text-align: center;
-}
+.modal-content { background: var(--modal-bg); width: 90%; max-height: 90%; border: 1px solid var(--accent-color); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; text-align: center; }
 .btn-close { padding: 10px; background: #444; color: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
 
-/* Inventory Grid & Badge */
+/* 인벤토리 아이템 & E 배지 */
 .inventory-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
-.inv-item { 
-    background: #2a2a2a; border: 1px solid #444; padding: 10px; border-radius: 5px; 
-    cursor: pointer; position: relative; display: flex; flex-direction: column; gap: 5px; 
-}
-.inv-item.equipped { border: 2px solid var(--accent-color); background: #332244; }
-.equip-badge {
-    position: absolute; top: -5px; right: -5px; background: var(--accent-color); color: #000;
-    font-weight: bold; font-size: 10px; width: 18px; height: 18px; border-radius: 50%;
-    display: flex; justify-content: center; align-items: center;
-}
+.inv-item { background: #2a2a2a; border: 1px solid #444; padding: 10px; border-radius: 5px; cursor: pointer; position: relative; display: flex; flex-direction: column; gap: 5px; }
+.inv-item.equipped { border: 1px solid var(--accent-color); background: #332a3a; }
+.equip-badge { position: absolute; top: -5px; right: -5px; background: var(--accent-color); color: #000; font-weight: bold; font-size: 10px; width: 18px; height: 18px; border-radius: 50%; display: flex; justify-content: center; align-items: center; box-shadow: 0 0 5px var(--accent-color); }
 .item-name { font-size: 12px; font-weight: bold; }
 .item-count { font-size: 11px; color: #888; }
 
-/* Status Detail Grid */
-.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; background: #222; padding: 10px; border-radius: 5px; }
+/* 상태창 */
+.stat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #333; }
+.stat-equip { text-align: left; background: #222; padding: 10px; border-radius: 5px; font-size: 13px; }
 
-/* Combat Layout */
+/* 전투 */
 .combat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .combat-entity { width: 40%; text-align: center; }
 .entity-avatar { font-size: 40px; margin-bottom: 5px; }
-.mini-bar { width: 100%; height: 6px; background: #444; margin: 3px 0; border-radius: 3px; }
+.mini-bar { width: 100%; height: 6px; background: #444; margin: 3px 0; border-radius: 3px; overflow: hidden; }
 .mini-bar div { height: 100%; background: #f00; transition: width 0.3s; }
-
 #dice-area { margin: 20px 0; min-height: 80px; text-align: center; }
 #dice-visual { font-size: 60px; display: inline-block; }
 .rolling { animation: rotate 0.5s infinite linear; }
-@keyframes rotate { 100% { transform: rotate(360deg); } }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
 .btn-combat { width: 100%; padding: 15px; background: var(--accent-color); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 .btn-combat.secondary { background: #444; color: #fff; margin-top: 10px; }
+
+@keyframes rotate { 100% { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
