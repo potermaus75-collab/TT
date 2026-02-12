@@ -17,21 +17,17 @@ class Game {
                 document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
             }
         };
-
-        // 전역 접근 가능하게 (HTML onclick 등에서 사용)
         window.game = this;
     }
 
     bindEvents() {
-        // 하단 메뉴 버튼
         document.querySelectorAll('#action-bar .btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.handleMenu(e.target.dataset.action));
         });
     }
 
     handleMenu(action) {
-        if (this.combat.isBattle) return; // 전투 중엔 메뉴 잠금
-
+        if (this.combat.isBattle) return;
         switch(action) {
             case 'explore': this.explore(); break;
             case 'inventory': this.openInventory(); break;
@@ -40,62 +36,67 @@ class Game {
         }
     }
 
-    // 탐험
     explore() {
         this.player.consumeStamina(3);
-        if (this.player.hp <= 0) {
-            this.logger.add("💀 기력이 다해 쓰러졌습니다...", "battle");
-            return;
-        }
+        if (this.player.hp <= 0) return;
 
         const roll = Math.random();
         if (roll < 0.4) {
-            // 몬스터 조우
             const mob = getRandomMonster(this.player.lv, this.player.lv+2);
             this.combat.startBattle(mob, (win, enemy) => {
-                if (win) {
-                    this.logger.add(`🎉 ${enemy.name} 처치! 경험치 +${enemy.exp}`, "loot");
-                    this.player.gainExp(enemy.exp);
-                    // 아이템 드랍
+                if (win && enemy) { // enemy가 null이면 도망친 것
+                    this.logger.add(`🎉 <b>${enemy.name}</b> 처치!`, "loot");
+                    this.player.gainExp(enemy.exp); // 경험치 획득!
+                    
                     if(enemy.drop) {
                         this.player.addItem(enemy.drop);
                         const dropItem = getItem(enemy.drop);
-                        if(dropItem) this.logger.add(`📦 [${dropItem.name}] 획득!`, "loot");
+                        if(dropItem) this.logger.add(`📦 전리품 [${dropItem.name}] 획득`, "loot");
                     }
-                } else {
-                    this.logger.add("💀 사망했습니다...", "battle");
+                } else if (!win) {
+                    this.logger.add("💀 눈앞이 캄캄해집니다... (사망)", "battle");
+                    // 여기서 게임 오버 처리나 부활 로직 추가 가능
                 }
             });
         } else {
-            this.logger.add("🍃 평화로운 숲길을 걷습니다.");
+            const events = ["숲이 조용합니다.", "나뭇잎 흔들리는 소리만 들립니다.", "무언가 지나간 흔적이 있습니다."];
+            this.logger.add(events[Math.floor(Math.random()*events.length)]);
         }
     }
 
-    // 인벤토리 열기
     openInventory() {
         const list = document.getElementById('inventory-list');
         list.innerHTML = '';
+        const p = this.player;
 
-        if(this.player.inventory.length === 0) {
+        if(p.inventory.length === 0) {
             list.innerHTML = '<p>가방이 비어있습니다.</p>';
         }
 
-        this.player.inventory.forEach(slot => {
+        p.inventory.forEach(slot => {
             const item = getItem(slot.id);
             if(!item) return;
 
+            // 장착 여부 확인
+            const isEquipped = (p.equipment.weapon?.id === item.id) || 
+                               (p.equipment.armor?.id === item.id) || 
+                               (p.equipment.acc?.id === item.id);
+
             const div = document.createElement('div');
-            div.className = 'inv-item';
+            div.className = `inv-item ${isEquipped ? 'equipped' : ''}`;
+            
+            // E 뱃지 추가
+            let badge = isEquipped ? '<span class="equip-badge">E</span>' : '';
+            
             div.innerHTML = `
-                <div>${item.name}</div>
-                <div style="color:#aaa">x${slot.count}</div>
+                ${badge}
+                <div class="item-name">${item.name}</div>
+                <div class="item-count">x${slot.count}</div>
             `;
+            
             div.onclick = () => {
-                const used = this.player.useItem(slot.id);
-                if(used) {
-                    this.openInventory(); // 갱신
-                    // this.ui.closeModals(); // 사용 후 닫을거면 주석 해제
-                }
+                const updated = p.useItem(slot.id);
+                if(updated) this.openInventory(); // 목록 갱신 (E 표시 등)
             };
             list.appendChild(div);
         });
@@ -103,32 +104,40 @@ class Game {
         document.getElementById('modal-inventory').classList.remove('hidden');
     }
 
-    // 상태창 열기
     openStatus() {
         const p = this.player;
+        const s = p.getCombatStats(); // 종합 스탯 가져오기
+
         document.getElementById('stat-fight-count').innerText = p.fightCount;
         document.getElementById('stat-exp').innerText = `${p.exp} / ${p.nextExp}`;
         
-        // 장비 표시
+        // 상세 스탯 표시
+        const detailHTML = `
+            <div class="stat-grid">
+                <div>⚔️ 공격력: ${s.atk}</div>
+                <div>🛡️ 방어력: ${s.def}</div>
+                <div>❤️ 체력: ${Math.floor(p.hp)} / ${p.maxHp}</div>
+                <div>💧 마나: ${Math.floor(p.mp)} / ${p.maxMp}</div>
+                <div>🍖 포만감: ${p.hunger}</div>
+                <div>💤 피로도: ${p.fatigue}</div>
+            </div>
+        `;
+        
         const equipList = document.getElementById('stat-equip-list');
         const w = p.equipment.weapon ? p.equipment.weapon.name : "(없음)";
         const a = p.equipment.armor ? p.equipment.armor.name : "(없음)";
-        equipList.innerHTML = `<p>⚔️ 무기: ${w}</p><p>🛡️ 방어구: ${a}</p>`;
-
-        // 버프 표시
-        const buffList = document.getElementById('stat-buff-list');
-        if(p.buffs.length === 0) buffList.innerHTML = '<p class="empty-msg">없음</p>';
-        else {
-            buffList.innerHTML = p.buffs.map(b => `<p>${b.desc} (${b.turn}턴 남음)</p>`).join('');
-        }
+        const ac = p.equipment.acc ? p.equipment.acc.name : "(없음)";
+        
+        equipList.innerHTML = detailHTML + `<hr><p>⚔️ 무기: ${w}</p><p>🛡️ 방어구: ${a}</p><p>💍 장신구: ${ac}</p>`;
 
         document.getElementById('modal-status').classList.remove('hidden');
     }
 
     rest() {
-        this.logger.add("⛺ 잠시 휴식을 취합니다. (체력 회복)", "event");
+        this.logger.add("⛺ 휴식을 취해 체력을 회복합니다.", "event");
         this.player.heal(30, 'hp');
-        this.player.consumeStamina(10); // 휴식은 배고픔 많이 깎임
+        this.player.heal(10, 'mp');
+        this.player.consumeStamina(10);
     }
 }
 
