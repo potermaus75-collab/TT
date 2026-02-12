@@ -7,7 +7,7 @@ export class CombatManager {
         this.isBattle = false;
         this.combatInterval = null; // 자동 전투용 타이머
         
-        // DOM 요소 연결 (없으면 에러 안나게 안전장치)
+        // DOM 요소 연결
         this.modal = document.getElementById('modal-combat');
         this.btnRoll = document.getElementById('btn-roll-dice');
         this.diceVisual = document.getElementById('dice-visual');
@@ -20,14 +20,17 @@ export class CombatManager {
     }
 
     startBattle(enemyData, endCallback) {
+        // [수정] 적 데이터 복사 및 최대 체력 설정 (UI 오류 방지)
         this.enemy = JSON.parse(JSON.stringify(enemyData));
+        this.enemy.maxHp = this.enemy.hp; 
+
         this.isBattle = true;
         this.endCallback = endCallback;
         this.player.fightCount++;
 
         // UI 초기화
         this.modal.classList.remove('hidden');
-        this.btnRoll.style.display = 'block'; // 버튼 보이기
+        this.btnRoll.style.display = 'block'; 
         this.btnRoll.disabled = false;
         
         this.diceMsg.innerText = "전투 개시! 운명을 굴리세요.";
@@ -40,10 +43,12 @@ export class CombatManager {
     }
 
     updateCombatUI() {
-        // 적 정보
+        // [수정] 적 HP 바 비율 계산 로직 추가
         document.getElementById('enemy-name').innerText = this.enemy.name;
-        document.getElementById('enemy-hp-text').innerText = `HP ${this.enemy.hp}`;
-        document.getElementById('enemy-hp-bar').style.width = '100%'; // 적 HP바는 그냥 꽉 채움 (연출용)
+        document.getElementById('enemy-hp-text').innerText = `HP ${this.enemy.hp}/${this.enemy.maxHp}`;
+        
+        const enemyPct = Math.max(0, (this.enemy.hp / this.enemy.maxHp) * 100);
+        document.getElementById('enemy-hp-bar').style.width = `${enemyPct}%`;
 
         // 내 정보
         document.getElementById('combat-player-hp-text').innerText = `HP ${Math.floor(this.player.hp)}`;
@@ -51,7 +56,7 @@ export class CombatManager {
         document.getElementById('combat-player-hp-bar').style.width = `${ppct}%`;
     }
 
-    // 1단계: 주사위 굴리기 (전투 보정 결정)
+    // 1단계: 주사위 굴리기
     rollStartDice() {
         this.btnRoll.disabled = true;
         this.diceVisual.classList.add('rolling');
@@ -87,14 +92,14 @@ export class CombatManager {
             
             // 2단계: 자동 전투 시작
             setTimeout(() => {
-                this.btnRoll.style.display = 'none'; // 버튼 숨김
+                this.btnRoll.style.display = 'none'; 
                 this.startAutoCombat(dmgMult);
             }, 800);
 
         }, 500);
     }
 
-    // 2단계: 자동 전투 루프 (0.8초마다 턴 진행)
+    // 2단계: 자동 전투 루프
     startAutoCombat(playerDmgMult) {
         this.log("⚔️ 자동 전투 시작!");
         
@@ -108,7 +113,7 @@ export class CombatManager {
 
             // --- 플레이어 턴 ---
             let pDmg = Math.floor((pStats.atk - (this.enemy.def / 2)) * playerDmgMult);
-            pDmg = Math.max(1, pDmg); 
+            pDmg = Math.max(1, pDmg); // 최소 1 데미지 보장
 
             // 치명타 (운 스탯)
             if (Math.random() * 100 < pStats.luk) {
@@ -127,12 +132,12 @@ export class CombatManager {
             }
 
             // --- 적 턴 ---
-            let eDmg = Math.max(0, this.enemy.atk - pStats.def);
+            // [수정] 방어력이 높아도 최소 1 데미지는 입도록 변경 (무적 버그 방지)
+            let eDmg = Math.max(1, this.enemy.atk - pStats.def);
             const isDead = this.player.takeDamage(eDmg);
             this.updateCombatUI();
 
-            if (eDmg > 0) this.log(`🛡️ ${eDmg} 피해를 입음.`);
-            else this.log(`🛡️ 방어함!`);
+            this.log(`🛡️ ${eDmg} 피해를 입음.`);
 
             if (isDead) {
                 this.endBattle(false);
@@ -142,7 +147,7 @@ export class CombatManager {
     }
 
     endBattle(win) {
-        clearInterval(this.combatInterval); // 루프 정지
+        clearInterval(this.combatInterval); 
         this.isBattle = false;
         
         const resultMsg = win ? "🎉 승리!" : "💀 패배...";
@@ -161,11 +166,11 @@ export class CombatManager {
             this.isBattle = false;
             setTimeout(() => {
                 this.modal.classList.add('hidden');
-                this.endCallback(true, null); // null = 도망침 (보상 없음)
+                this.endCallback(true, null); 
             }, 800);
         } else {
             this.log("❌ 도망 실패! 턴을 낭비했습니다.");
-            // 실패 시 자동 전투가 멈춰있으면 다시 시작
+            // 실패 시 자동 전투 재개
             if (!this.combatInterval && this.btnRoll.style.display === 'none') {
                 this.startAutoCombat(1.0);
             }
