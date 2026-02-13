@@ -246,6 +246,16 @@ export class Player {
         }
     }
 
+    heal(amount, target = 'hp') {
+        const s = this.getCombatStats();
+        if (target === 'mp') {
+            this.mp = Math.min(s.maxMp, this.mp + amount);
+        } else {
+            this.hp = Math.min(s.maxHp, this.hp + amount);
+        }
+        this.updateUI();
+    }
+
     gainExp(amount) {
         this.exp += amount;
         while (this.exp >= this.nextExp) {
