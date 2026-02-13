@@ -3,6 +3,8 @@ import { getItem } from '../data/index.js';
 export class Player {
     constructor(uiController) {
         this.ui = uiController;
+        this.saveDebounceTimer = null;
+        this.saveDebounceDelay = 400;
         this.reset();
     }
 
@@ -114,30 +116,46 @@ export class Player {
             elLv.innerText = `LV.${this.lv} (${expPct}%)`;
         }
 
-        // 턴이 끝날 때마다 자동 저장
+        // 저장은 디바운스로 처리해 localStorage 쓰기 폭주를 방지
         this.saveData();
     }
 
     // 저장
-    saveData() {
+    saveData(immediate = false) {
         if (!this.name) return;
-        const data = {
-            name: this.name,
-            lv: this.lv,
-            exp: this.exp,
-            nextExp: this.nextExp,
-            gold: this.gold,
-            baseStats: this.baseStats,
-            statPoints: this.statPoints,
-            hp: this.hp,
-            mp: this.mp,
-            hunger: this.hunger,
-            fatigue: this.fatigue,
-            inventory: this.inventory,
-            equipment: this.equipment,
-            fightCount: this.fightCount
+
+        const write = () => {
+            const data = {
+                name: this.name,
+                lv: this.lv,
+                exp: this.exp,
+                nextExp: this.nextExp,
+                gold: this.gold,
+                baseStats: this.baseStats,
+                statPoints: this.statPoints,
+                hp: this.hp,
+                mp: this.mp,
+                hunger: this.hunger,
+                fatigue: this.fatigue,
+                inventory: this.inventory,
+                equipment: this.equipment,
+                fightCount: this.fightCount
+            };
+            localStorage.setItem(`TRPG_${this.name}`, JSON.stringify(data));
+            console.debug(`[SAVE] ${this.name} lv=${this.lv} hp=${Math.floor(this.hp)} gold=${this.gold}`);
+            this.saveDebounceTimer = null;
         };
-        localStorage.setItem(`TRPG_${this.name}`, JSON.stringify(data));
+
+        if (this.saveDebounceTimer) {
+            clearTimeout(this.saveDebounceTimer);
+        }
+
+        if (immediate) {
+            write();
+            return;
+        }
+
+        this.saveDebounceTimer = setTimeout(write, this.saveDebounceDelay);
     }
 
     // 불러오기
@@ -169,10 +187,11 @@ export class Player {
 
     // 사망 처리 (데이터 삭제)
     die() {
-        this.ui.add(`💀 <b>${this.name}</b>의 심장이 멈췄습니다...`, "battle");
+        this.ui.add(`💀 ${this.name}의 심장이 멈췄습니다...`, "battle");
         this.ui.add("잠시 후 타이틀 화면으로 이동합니다...", "system");
         
         // 데이터 삭제 (로그라이크)
+        if (this.saveDebounceTimer) clearTimeout(this.saveDebounceTimer);
         localStorage.removeItem(`TRPG_${this.name}`);
 
         setTimeout(() => {
@@ -267,7 +286,7 @@ export class Player {
             this.mp = this.getCombatStats().maxMp; // 정신력 회복
             this.statPoints += 3; 
             
-            this.ui.add(`🆙 <b>레벨 업! (Lv.${this.lv})</b> SP 3 획득!`, 'event');
+            this.ui.add(`🆙 레벨 업! (Lv.${this.lv}) SP 3 획득!`, 'event');
         }
         this.updateUI();
     }
