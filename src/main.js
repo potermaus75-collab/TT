@@ -19,6 +19,8 @@ class Game {
             add: (msg, type) => this.logger.add(msg, type)
         };
 
+        this.isChoiceActive = false;
+
         this.bindEvents();
     }
 
@@ -68,6 +70,7 @@ class Game {
 
     handleMenu(action) {
         if (this.combat.isBattle) return;
+        if (this.isChoiceActive) return;
         if (this.player.hp <= 0) return; // 죽으면 조작 불가
 
         switch(action) {
@@ -78,7 +81,7 @@ class Game {
         }
     }
 
-    explore() {
+    async explore() {
         // 1. 상태 체크 (배고픔 데미지로 사망 시 즉시 중단)
         const isDead = this.player.consumeStamina(3);
         if (isDead) {
@@ -97,7 +100,6 @@ class Game {
         if (roll < 0.35) {
             // [전투] 35%
             const mob = getRandomMonster(this.player.lv, this.player.lv + 2);
-
             this.combat.startBattle(mob, (win, enemy) => this.resolveCombatResult(win, enemy));
 
         } else if (roll < 0.50) {
@@ -118,7 +120,7 @@ class Game {
 
         } else if (roll < 0.92) {
             // [선택지 이벤트] 22%
-            this.runChoiceEvent();
+            await this.runChoiceEvent();
 
         } else {
             // [일반] 8%
@@ -152,26 +154,43 @@ class Game {
     }
 
     pickEventChoice(title, options) {
-        const menu = options.map((opt, idx) => `${idx + 1}) ${opt}`).join('\n');
-        const input = prompt(`${title}\n\n선택지를 고르세요 (번호 입력):\n${menu}`);
+        return new Promise((resolve) => {
+            const modal = document.getElementById('modal-choice');
+            const titleEl = document.getElementById('choice-title');
+            const descEl = document.getElementById('choice-desc');
+            const list = document.getElementById('choice-list');
 
-        if (input === null) return 0;
+            this.isChoiceActive = true;
+            titleEl.textContent = title;
+            descEl.textContent = '선택지를 터치해 진행하세요.';
+            list.innerHTML = '';
 
-        const idx = Number(input) - 1;
-        if (Number.isNaN(idx) || idx < 0 || idx >= options.length) {
-            this.logger.add("❓ 잘못된 입력입니다. 1번 선택지를 진행합니다.", "system");
-            return 0;
-        }
-        return idx;
+            const finish = (idx) => {
+                modal.classList.add('hidden');
+                this.isChoiceActive = false;
+                resolve(idx);
+            };
+
+            options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'choice-btn';
+                btn.textContent = `${idx + 1}) ${opt}`;
+                btn.onclick = () => finish(idx);
+                list.appendChild(btn);
+            });
+
+            modal.classList.remove('hidden');
+        });
     }
 
-    runChoiceEvent() {
+    async runChoiceEvent() {
         const stats = this.player.getCombatStats();
 
         const events = [
-            () => {
+            async () => {
                 this.logger.add("🌉 무너진 다리 앞에 섰습니다.", "event");
-                const idx = this.pickEventChoice("무너진 다리", ["힘으로 잔해를 밀어 길을 만든다", "민첩하게 아래 협곡을 점프한다"]);
+                const idx = await this.pickEventChoice("무너진 다리", ["힘으로 잔해를 밀어 길을 만든다", "민첩하게 아래 협곡을 점프한다"]);
                 if (idx === 0) {
                     this.logger.add("선택: 힘으로 길을 만든다.", "system");
                     if (stats.str >= 14) {
@@ -197,9 +216,9 @@ class Game {
                     this.player.updateUI();
                 }
             },
-            () => {
+            async () => {
                 this.logger.add("🧪 수상한 연금술사가 다가왔습니다.", "event");
-                const idx = this.pickEventChoice("수상한 연금술사", ["말빨로 가격 흥정한다", "실험약을 그냥 마셔본다"]);
+                const idx = await this.pickEventChoice("수상한 연금술사", ["말빨로 가격 흥정한다", "실험약을 그냥 마셔본다"]);
                 if (idx === 0) {
                     this.logger.add("선택: 가격 흥정.", "system");
                     if (stats.cha >= 14) {
@@ -224,9 +243,9 @@ class Game {
                     this.player.updateUI();
                 }
             },
-            () => {
+            async () => {
                 this.logger.add("📜 고대 룬석이 빛을 냅니다.", "event");
-                const idx = this.pickEventChoice("고대 룬석", ["룬을 해독한다", "힘으로 부숴 핵만 챙긴다"]);
+                const idx = await this.pickEventChoice("고대 룬석", ["룬을 해독한다", "힘으로 부숴 핵만 챙긴다"]);
                 if (idx === 0) {
                     this.logger.add("선택: 룬 해독.", "system");
                     if (stats.int >= 14) {
@@ -246,9 +265,9 @@ class Game {
                 this.logger.add(`💥 봉인이 깨지며 ${mob.name}가 나타났습니다!`, "battle");
                 this.combat.startBattle(mob, (win, enemy) => this.resolveCombatResult(win, enemy));
             },
-            () => {
+            async () => {
                 this.logger.add("🎲 노상 도박꾼이 승부를 제안합니다.", "event");
-                const idx = this.pickEventChoice("노상 도박", ["차분히 속임수를 간파한다(CHA)", "손놀림으로 주사위를 바꿔치기한다(DEX)"]);
+                const idx = await this.pickEventChoice("노상 도박", ["차분히 속임수를 간파한다(CHA)", "손놀림으로 주사위를 바꿔치기한다(DEX)"]);
                 if (idx === 0) {
                     this.logger.add("선택: 속임수 간파.", "system");
                     if (stats.cha >= 13) {
@@ -274,9 +293,9 @@ class Game {
                     this.combat.startBattle(mob, (win, enemy) => this.resolveCombatResult(win, enemy));
                 }
             },
-            () => {
+            async () => {
                 this.logger.add("🍄 독특한 버섯 군락을 발견했습니다.", "event");
-                const idx = this.pickEventChoice("버섯 군락", ["지식을 믿고 안전한 버섯만 채집(INT)", "그냥 많이 뜯어 먹는다"]);
+                const idx = await this.pickEventChoice("버섯 군락", ["지식을 믿고 안전한 버섯만 채집(INT)", "그냥 많이 뜯어 먹는다"]);
                 if (idx === 0) {
                     this.logger.add("선택: 안전 채집.", "system");
                     if (stats.int >= 13) {
@@ -302,9 +321,9 @@ class Game {
                 }
                 this.player.updateUI();
             },
-            () => {
+            async () => {
                 this.logger.add("⛏️ 폐광 입구가 열려 있습니다.", "event");
-                const idx = this.pickEventChoice("폐광 탐사", ["힘으로 암석을 치워 깊이 들어간다(STR)", "소리만 듣고 위험하면 후퇴한다"]);
+                const idx = await this.pickEventChoice("폐광 탐사", ["힘으로 암석을 치워 깊이 들어간다(STR)", "소리만 듣고 위험하면 후퇴한다"]);
                 if (idx === 0) {
                     this.logger.add("선택: 강행 채굴.", "system");
                     if (stats.str >= 15) {
@@ -326,9 +345,9 @@ class Game {
                 this.logger.add("🧭 무리하지 않고 물러났습니다. 피로 -8.", "heal");
                 this.player.updateUI();
             },
-            () => {
+            async () => {
                 this.logger.add("🗡️ 숲 도적이 길을 막습니다.", "event");
-                const idx = this.pickEventChoice("숲 도적과 조우", ["빠르게 선제 기습한다(DEX)", "말로 설득해 통과한다(CHA)"]);
+                const idx = await this.pickEventChoice("숲 도적과 조우", ["빠르게 선제 기습한다(DEX)", "말로 설득해 통과한다(CHA)"]);
                 if (idx === 0) {
                     this.logger.add("선택: 선제 기습.", "system");
                     if (stats.dex >= 14) {
@@ -354,9 +373,9 @@ class Game {
                 }
                 this.player.updateUI();
             },
-            () => {
+            async () => {
                 this.logger.add("🩹 부상당한 정찰병이 구조를 요청합니다.", "event");
-                const idx = this.pickEventChoice("정찰병 구조", ["응급 처치를 해준다(INT)", "용기를 북돋우며 인솔한다(CHA)"]);
+                const idx = await this.pickEventChoice("정찰병 구조", ["응급 처치를 해준다(INT)", "용기를 북돋우며 인솔한다(CHA)"]);
                 if (idx === 0) {
                     this.logger.add("선택: 응급 처치.", "system");
                     if (stats.int >= 13) {
@@ -382,9 +401,9 @@ class Game {
                 }
                 this.player.updateUI();
             },
-            () => {
+            async () => {
                 this.logger.add("🌀 균열에서 불안정한 마력이 새어 나옵니다.", "event");
-                const idx = this.pickEventChoice("마력 균열", ["지능으로 봉인진을 재구성한다(INT)", "민첩하게 파편을 피해 핵을 훔친다(DEX)"]);
+                const idx = await this.pickEventChoice("마력 균열", ["지능으로 봉인진을 재구성한다(INT)", "민첩하게 파편을 피해 핵을 훔친다(DEX)"]);
                 if (idx === 0) {
                     this.logger.add("선택: 봉인진 재구성.", "system");
                     if (stats.int >= 16) {
@@ -413,7 +432,7 @@ class Game {
         ];
 
         const picked = events[Math.floor(Math.random() * events.length)];
-        picked();
+        await picked();
     }
 
     openShop() {
