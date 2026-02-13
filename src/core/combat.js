@@ -68,15 +68,15 @@ export class CombatManager {
             if (roll === 20) {
                 dmgMult = 1.5; bonusMsg = "🔥 [대성공] 데미지 1.5배!";
                 this.diceMsg.style.color = "#ff5555";
+            } else if (roll === 1) {
+                dmgMult = 0.5; bonusMsg = "💀 [대실패] 데미지 반토막!";
+                this.diceMsg.style.color = "#555";
             } else if (roll >= 15) {
                 dmgMult = 1.2; bonusMsg = "⚔️ [유리함] 데미지 1.2배!";
                 this.diceMsg.style.color = "#55ff55";
             } else if (roll <= 5) {
                 dmgMult = 0.8; bonusMsg = "☁️ [불리함] 데미지 0.8배...";
                 this.diceMsg.style.color = "#888";
-            } else if (roll === 1) {
-                dmgMult = 0.5; bonusMsg = "💀 [대실패] 데미지 반토막!";
-                this.diceMsg.style.color = "#555";
             } else {
                 bonusMsg = "⚖️ [평범] 정상 컨디션.";
                 this.diceMsg.style.color = "#fff";
