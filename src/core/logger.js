@@ -10,7 +10,7 @@ export class Logger {
     add(message, type = 'system') {
         const entry = document.createElement('div');
         entry.className = `log-entry ${type}`;
-        entry.innerHTML = message; // HTML 태그 허용 (색상 등)
+        entry.textContent = message;
         
         this.container.appendChild(entry);
         this.scrollToBottom();
@@ -30,7 +30,7 @@ export class Logger {
         
         let i = 0;
         const interval = setInterval(() => {
-            entry.innerHTML += message.charAt(i);
+            entry.textContent += message.charAt(i);
             i++;
             this.scrollToBottom();
             if (i >= message.length) clearInterval(interval);
