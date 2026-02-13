@@ -97,6 +97,7 @@ class Game {
         if (roll < 0.35) {
             // [전투] 35%
             const mob = getRandomMonster(this.player.lv, this.player.lv + 2);
+
             this.combat.startBattle(mob, (win, enemy) => this.resolveCombatResult(win, enemy));
 
         } else if (roll < 0.50) {
