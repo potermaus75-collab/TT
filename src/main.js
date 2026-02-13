@@ -47,11 +47,11 @@ class Game {
 
         // 로드 시도
         if (this.player.loadData(name)) {
-            this.logger.add(`👋 돌아오셨군요, <b>${name}</b>님!`, "system");
+            this.logger.add(`👋 돌아오셨군요, ${name}님!`, "system");
         } else {
             this.player.reset(name);
-            this.logger.add(`⚔️ 새로운 모험이 시작됩니다. 환영합니다, <b>${name}</b>!`, "system");
-            this.player.saveData(); // 첫 저장
+            this.logger.add(`⚔️ 새로운 모험이 시작됩니다. 환영합니다, ${name}!`, "system");
+            this.player.saveData(true); // 첫 저장
         }
         this.player.updateUI();
     }
@@ -101,7 +101,7 @@ class Game {
                 if (win) {
                     if (enemy) {
                         const goldReward = enemy.lv * 10 + Math.floor(Math.random() * 10);
-                        this.logger.add(`🎉 <b>${enemy.name}</b> 처치!`, "loot");
+                        this.logger.add(`🎉 ${enemy.name} 처치!`, "loot");
                         this.player.gainExp(enemy.exp);
                         this.player.gold += goldReward;
                         this.logger.add(`💰 ${goldReward} Gold 획득!`, "loot");
@@ -119,13 +119,13 @@ class Game {
                     // CombatManager가 endBattle(false)를 호출하면 여기서 처리
                     this.player.die();
                 }
-                this.player.saveData(); // 전투 종료 후 자동 저장
+                this.player.saveData(true); // 전투 종료 후 자동 저장
             });
 
         } else if (roll < 0.50) {
             // [보물상자] 15%
             const foundGold = Math.floor(Math.random() * 50) + 10;
-            this.logger.add(`🎁 낡은 보물상자를 발견했습니다! <b>${foundGold}G</b> 획득!`, "loot");
+            this.logger.add(`🎁 낡은 보물상자를 발견했습니다! ${foundGold}G 획득!`, "loot");
             this.player.gold += foundGold;
             this.player.updateUI();
 

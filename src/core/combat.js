@@ -174,7 +174,7 @@ export class CombatManager {
     tryRun() {
         clearInterval(this.combatInterval);
         // 도주 확률은 민첩에 비례 (기본 50% + DEX%)
-        const escapeChance = 50 + this.player.getCombatStats().dex;
+        const escapeChance = Math.min(95, 50 + this.player.getCombatStats().dex);
         
         if (Math.random() * 100 < escapeChance) {
             this.log("🏃💨 도망 성공!");
@@ -193,7 +193,7 @@ export class CombatManager {
 
     log(msg) {
         const p = document.createElement('div');
-        p.innerHTML = msg;
+        p.textContent = msg;
         this.combatLog.prepend(p);
     }
 }
